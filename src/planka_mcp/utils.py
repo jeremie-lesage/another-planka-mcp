@@ -78,15 +78,15 @@ class ResponseFormatter:
         labels = [context.get('labels', {}).get(label_id, {}).get('name', '')
                   for label_id in card_label_ids]
 
-        task_progress = ResponseFormatter.format_task_progress(card.get('taskLists', []))
+        task_progress = ResponseFormatter.format_task_progress(card.get('taskLists') or [])
 
         return f"""- **{card.get('name', 'Untitled')}** (ID: `{card.get('id', 'N/A')}`)
   - List: {list_name}
   - Labels: {', '.join(labels) if labels else 'None'}
-  - Due: {card.get('dueDate', 'No due date')}
+  - Due: {card.get('dueDate') or 'No due date'}
   - Tasks: {task_progress}
-  - Comments: {len(card.get('comments', []))}
-  - Attachments: {len(card.get('attachments', []))}"""
+  - Comments: {len(card.get('comments') or [])}
+  - Attachments: {len(card.get('attachments') or [])}"""
 
     @staticmethod
     def format_card_summary(card: Dict, context: Dict) -> str:
@@ -99,8 +99,8 @@ class ResponseFormatter:
         members = [context.get('users', {}).get(user_id, {}).get('name', '')
                    for user_id in card.get('memberIds', [])]
 
-        task_progress = ResponseFormatter.format_task_progress(card.get('taskLists', []))
-        description = card.get('description', '')
+        task_progress = ResponseFormatter.format_task_progress(card.get('taskLists') or [])
+        description = card.get('description') or ''
         desc_snippet = (description[:100] + '...') if len(description) > 100 else description
 
         return f"""### {card.get('name', 'Untitled')}
@@ -108,11 +108,11 @@ class ResponseFormatter:
 **List**: {list_name}
 **Labels**: {', '.join(labels) if labels else 'None'}
 **Members**: {', '.join(members) if members else 'None'}
-**Due Date**: {card.get('dueDate', 'No due date')}
-**Created**: {card.get('createdAt', 'Unknown')}
+**Due Date**: {card.get('dueDate') or 'No due date'}
+**Created**: {card.get('createdAt') or 'Unknown'}
 **Tasks**: {task_progress}
-**Comments**: {len(card.get('comments', []))}
-**Attachments**: {len(card.get('attachments', []))}
+**Comments**: {len(card.get('comments') or [])}
+**Attachments**: {len(card.get('attachments') or [])}
 
 **Description**: {desc_snippet if desc_snippet else '(No description)'}
 """
@@ -135,9 +135,9 @@ class ResponseFormatter:
 **Board**: {context.get('board_name', 'Unknown')}
 
 ## Details
-- **Due Date**: {card.get('dueDate', 'No due date')}
-- **Created**: {card.get('createdAt', 'Unknown')}
-- **Updated**: {card.get('updatedAt', 'Unknown')}
+- **Due Date**: {card.get('dueDate') or 'No due date'}
+- **Created**: {card.get('createdAt') or 'Unknown'}
+- **Updated**: {card.get('updatedAt') or 'Unknown'}
 - **Position**: {card.get('position', 'N/A')}
 
 ## Members
@@ -147,11 +147,11 @@ class ResponseFormatter:
 {', '.join(labels) if labels else '(No labels)'}
 
 ## Description
-{card.get('description', '(No description)')}
+{card.get('description') or '(No description)'}
 
 ## Tasks
 """
-        task_lists = card.get('taskLists', [])
+        task_lists = card.get('taskLists') or []
         if task_lists:
             for task_list in task_lists:
                 output += f"\n**{task_list.get('name', 'Tasks')}**:\n"
@@ -162,7 +162,7 @@ class ResponseFormatter:
             output += "(No tasks)\n"
 
         output += "\n## Comments\n"
-        comments = card.get('comments', [])
+        comments = card.get('comments') or []
         if comments:
             for comment in comments:
                 user_id = comment.get('userId', 'Unknown')
@@ -172,7 +172,7 @@ class ResponseFormatter:
             output += "(No comments)\n"
 
         output += f"\n## Attachments\n"
-        attachments = card.get('attachments', [])
+        attachments = card.get('attachments') or []
         if attachments:
             for att in attachments:
                 output += f"- {att.get('name', 'Unnamed')} (ID: `{att.get('id', 'N/A')}`)\n"
