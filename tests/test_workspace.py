@@ -27,6 +27,48 @@ class TestPlankaGetWorkspace:
             mock_cache.get_workspace.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_get_workspace_markdown_groups_lists_and_labels_by_board(
+        self, mock_planka_api_client, mock_cache
+    ):
+        """Lists and labels sharing a name stay attributable to their board and project."""
+        data = {
+            "projects": [
+                {"id": "projA", "name": "Project A"},
+                {"id": "projB", "name": "Project B"},
+            ],
+            "boards": {
+                "boardA": {"id": "boardA", "name": "Board A", "projectId": "projA"},
+                "boardB": {"id": "boardB", "name": "Board B", "projectId": "projB"},
+            },
+            "lists": {
+                "listA2": {"id": "listA2", "name": "Done", "boardId": "boardA", "position": 2},
+                "listA1": {"id": "listA1", "name": "Todo", "boardId": "boardA", "position": 1},
+                "listB1": {"id": "listB1", "name": "Done", "boardId": "boardB", "position": 1},
+            },
+            "labels": {
+                "labelA": {"id": "labelA", "name": "Urgent", "color": "red", "boardId": "boardA"},
+                "labelB": {"id": "labelB", "name": "Urgent", "color": "red", "boardId": "boardB"},
+            },
+            "users": {},
+            "card_labels": {},
+        }
+        with patch('planka_mcp.instances.api_client', mock_planka_api_client), \
+             patch('planka_mcp.instances.cache', mock_cache):
+            mock_cache.get_workspace.return_value = data
+            result = await planka_get_workspace(GetWorkspaceInput())
+
+        project_a = result.index("Project A")
+        board_a = result.index("Board A")
+        project_b = result.index("Project B")
+        board_b = result.index("Board B")
+        assert project_a < board_a < project_b < board_b
+
+        assert board_a < result.index("`listA1`") < result.index("`listA2`") < project_b
+        assert board_a < result.index("`labelA`") < project_b
+        assert board_b < result.index("`listB1`")
+        assert board_b < result.index("`labelB`")
+
+    @pytest.mark.asyncio
     async def test_get_workspace_json_format_success(
         self, mock_planka_api_client, mock_cache, sample_workspace_data
     ):
@@ -104,10 +146,13 @@ class TestFetchWorkspaceData:
             assert "lists" in data
             assert "list1" in data["lists"]
             assert data["lists"]["list1"]["name"] == "To Do"
+            assert data["lists"]["list1"]["boardId"] == "board1"
+            assert data["boards"]["board1"]["projectId"] == "proj1"
 
             assert "labels" in data
             assert "label1" in data["labels"]
             assert data["labels"]["label1"]["name"] == "Bug"
+            assert data["labels"]["label1"]["boardId"] == "board1"
 
     @pytest.mark.asyncio
     async def test_fetch_workspace_data_api_error(self, mock_planka_api_client):

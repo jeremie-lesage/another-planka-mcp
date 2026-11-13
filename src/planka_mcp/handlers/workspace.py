@@ -45,7 +45,7 @@ async def fetch_workspace_data() -> Dict:
                 boards_map[board["id"]] = {
                     "id": board["id"],
                     "name": board.get("name", "Unnamed Board"),
-                    "projectId": board.get("projectId"),
+                    "projectId": project["id"],
                     "project_name": project.get("name", "Unknown Project")
                 }
 
@@ -54,7 +54,7 @@ async def fetch_workspace_data() -> Dict:
                     lists_map[lst["id"]] = {
                         "id": lst["id"],
                         "name": lst.get("name", "Unnamed List"),
-                        "boardId": lst.get("boardId"),
+                        "boardId": board["id"],
                         "board_name": board.get("name", "Unknown Board"),
                         "position": lst.get("position", 0)
                     }
@@ -65,7 +65,7 @@ async def fetch_workspace_data() -> Dict:
                         "id": label["id"],
                         "name": label.get("name", "Unnamed Label"),
                         "color": label.get("color", "gray"),
-                        "boardId": label.get("boardId"),
+                        "boardId": board["id"],
                         "board_name": board.get("name", "Unknown Board")
                     }
                 
@@ -88,6 +88,25 @@ async def fetch_workspace_data() -> Dict:
         }
     except Exception as e:
         raise e
+
+def _format_board(board: Dict, data: Dict) -> str:
+    board_id = board.get('id')
+    content = f"\n### Board: {board.get('name', 'Unnamed')} (ID: `{board_id}`)\n"
+
+    lists = [lst for lst in data.get('lists', {}).values() if lst.get('boardId') == board_id]
+    lists.sort(key=lambda lst: lst.get('position') or 0)
+    if lists:
+        content += "Lists:\n"
+        for lst in lists:
+            content += f"- **{lst.get('name', 'Unnamed')}** (ID: `{lst.get('id')}`)\n"
+
+    labels = [label for label in data.get('labels', {}).values() if label.get('boardId') == board_id]
+    if labels:
+        content += "Labels:\n"
+        for label in labels:
+            content += f"- **{label.get('name', 'Unnamed')}** (Color: {label.get('color', 'N/A')}, ID: `{label.get('id')}`)\n"
+
+    return content
 
 # ==================== TOOLS ====================
 
@@ -122,22 +141,13 @@ async def planka_get_workspace(params: GetWorkspaceInput) -> str:
             content = json.dumps(data, indent=2)
         else:
             # Format as readable Markdown
-            content = "# Planka Workspace\n\n"
-            content += "## Projects\n"
+            content = "# Planka Workspace\n"
             for project in data.get('projects', []):
-                content += f"- **{project.get('name', 'Unnamed')}** (ID: `{project.get('id', 'N/A')}`)\n"
-
-            content += "\n## Boards\n"
-            for board_id, board in data.get('boards', {}).items():
-                content += f"- **{board.get('name', 'Unnamed')}** (ID: `{board_id}`)\n"
-
-            content += "\n## Lists\n"
-            for list_id, lst in data.get('lists', {}).items():
-                content += f"- **{lst.get('name', 'Unnamed')}** (ID: `{list_id}`)\n"
-
-            content += "\n## Labels\n"
-            for label_id, label in data.get('labels', {}).items():
-                content += f"- **{label.get('name', 'Unnamed')}** (Color: {label.get('color', 'N/A')}, ID: `{label_id}`)\n"
+                project_id = project.get('id')
+                content += f"\n## Project: {project.get('name', 'Unnamed')} (ID: `{project_id}`)\n"
+                boards = [b for b in data.get('boards', {}).values() if b.get('projectId') == project_id]
+                for board in boards:
+                    content += _format_board(board, data)
 
             content += "\n## Users\n"
             for user_id, user in data.get('users', {}).items():
